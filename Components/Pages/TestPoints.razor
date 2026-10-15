@@ -1,0 +1,66 @@
+@page "/testpoints"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDb> DbFactory
+
+<h3>Test Points</h3>
+
+<input @bind="newName" placeholder="Test point name" />
+<button @onclick="Add">Add</button>
+
+<table>
+	@foreach (var tp in points)
+	{
+		<tr>
+			<td>@tp.Name</td>
+			<td>
+				<select @bind="tp.Status">
+					@foreach (var s in Enum.GetValues<Status>())
+					{
+						<option value="@s">@s</option>
+					}
+				</select>
+			</td>
+			<td><button @onclick="() => Save(tp)">Save</button></td>
+			<td><button @onclick="() => Delete(tp)">Delete</button></td>
+		</tr>
+	}
+</table>
+
+@code {
+	List<TestPoint> points = new();
+	string newName = "";
+
+	protected override async Task OnInitializedAsync() => await Load();
+
+	async Task Load()
+	{
+		await using var db = await DbFactory.CreateDbContextAsync();
+		points = await db.TestPoints.OrderBy(t => t.Created).ToListAsync();
+	}
+
+	async Task Add()
+	{
+		if (string.IsNullOrWhiteSpace(newName)) return;
+		await using var db = await DbFactory.CreateDbContextAsync();
+		db.TestPoints.Add(new TestPoint { Name = newName });
+		await db.SaveChangesAsync();
+		newName = "";
+		await Load();
+	}
+
+	async Task Save(TestPoint tp)
+	{
+		await using var db = await DbFactory.CreateDbContextAsync();
+		db.TestPoints.Update(tp);
+		await db.SaveChangesAsync();
+	}
+
+	async Task Delete(TestPoint tp)
+	{
+		await using var db = await DbFactory.CreateDbContextAsync();
+		db.TestPoints.Remove(tp);
+		await db.SaveChangesAsync();
+		await Load();
+	}
+}
